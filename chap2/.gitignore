@@ -1,0 +1,9 @@
+.vscode
+grayscale/single
+*.exe
+*.out
+*.o
+*.a
+*.so
+*.dll
+*.dylib
