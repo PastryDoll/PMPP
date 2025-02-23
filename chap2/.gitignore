@@ -1,5 +1,6 @@
 .vscode
 grayscale/single
+vector_addition/single
 *.exe
 *.out
 *.o
