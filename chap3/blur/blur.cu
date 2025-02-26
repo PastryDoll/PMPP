@@ -7,9 +7,10 @@
 #include "commons/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "commons/stb_image_write.h"
-
+#include "commons/profiler.cpp"
 #define BLUR_KERNEL_SIZE 7 
 
+#define load_and_run_gpu
 void blur_CPU(u_char* Pout, u_char* Pin, int width, int height)
 {
     for (int row = 0; row < height; row++)
@@ -88,8 +89,8 @@ void run_kernel(u_char* Pout_h, u_char* Pin_h, int width, int height)
     cudaFree(Pin_d);
 }
 
-void load_and_run(const char* filename, void (*run)(u_char* Pout_h, u_char* Pin_h, int width, int height), bool gpu)
-{
+inline void load_and_run(const char* filename, void (*run)(u_char* Pout_h, u_char* Pin_h, int width, int height), bool gpu)
+{   
     int x,y,n;
     unsigned char *data = stbi_load(filename, &x, &y, &n, 1);
     if (x == 0) {printf("Error loading image from %s\n", filename);}
@@ -98,14 +99,7 @@ void load_and_run(const char* filename, void (*run)(u_char* Pout_h, u_char* Pin_
 
     u_char* Pout_h = (u_char*)malloc( x*y*sizeof(u_char));
 
-    clock_t start = clock();
     run(Pout_h,data,x,y);
-    clock_t end = clock();
-    float time = (float)(end - start) / CLOCKS_PER_SEC * 1000;
-
-    if (gpu) printf("GPU time: %.2f ms\n", time);
-    else printf("CPU time: %.2f ms\n", time);
-
     const char* output_filename;
     if (gpu) output_filename = "./sample_gray_gpu.jpg";
     else output_filename = "./sample_gray_cpu.jpg";
@@ -124,7 +118,17 @@ void load_and_run(const char* filename, void (*run)(u_char* Pout_h, u_char* Pin_
 
 int main() 
 {
-    load_and_run("8k_bw.jpg", run_kernel, true);
-    load_and_run("8k_bw.jpg", blur_CPU, false);
+    BeginProfile();
+    {
+        TimeBlock("GPU")
+        load_and_run("8k_bw.jpg", run_kernel, true);
+    }
+    {
+        TimeBlock("CPU")
+        load_and_run("8k_bw.jpg", blur_CPU, false);
+    }
+
+
+    EndAndPrintProfile();
     return 0;
 }
