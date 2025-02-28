@@ -10,9 +10,9 @@ def generate_and_save_matrices(n, m, i, j):
 
     np.dot(A, B, out=C)
 
-    np.savetxt('matrix_A.txt', A, fmt='%.8f')
-    np.savetxt('matrix_B.txt', B, fmt='%.8f')
-    np.savetxt('matrix_C.txt', C, fmt='%.8f')
+    np.savetxt('matrix_A.txt', A.astype(np.float32), fmt='%.8f')
+    np.savetxt('matrix_B.txt', B.astype(np.float32), fmt='%.8f')
+    np.savetxt('matrix_C.txt', C.astype(np.float32), fmt='%.8f')
 
     print("Matrices saved to files: matrix_A.txt, matrix_B.txt, matrix_C.txt")
 
