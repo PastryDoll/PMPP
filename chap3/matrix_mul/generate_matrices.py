@@ -17,5 +17,5 @@ def generate_and_save_matrices(n, m, i, j):
     print("Matrices saved to files: matrix_A.txt, matrix_B.txt, matrix_C.txt")
 
 if __name__ == "__main__":
-    n, m, i, j = 100,100,100,100
+    n, m, i, j = 1000,1000,1000,1000
     generate_and_save_matrices(n, m, i, j)

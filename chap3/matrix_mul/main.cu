@@ -50,7 +50,7 @@ void save_matrix(const char *filename, float *matrix, int rows, int cols) {
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            fprintf(file, "%.2f ", matrix[i * cols + j]);
+            fprintf(file, "%.8f ", matrix[i * cols + j]);
         }
         fprintf(file, "\n");
     }
@@ -75,6 +75,46 @@ void matrix_mul_CPU(float* M, float* N, float* P, int width)
         }
     }
 }
+__global__
+void matrix_mul_GPU(float* M, float* N, float* P, int width)
+{
+    int col = blockIdx.x*blockDim.x + threadIdx.x;
+    int row = blockIdx.y*blockDim.y + threadIdx.y;
+    if (col < width && row < width)
+    {
+        float Pvalue = 0;
+        for (int k = 0; k < width; ++k) 
+        {
+            Pvalue += M[row*width + k]*N[k*width+col];
+        }
+    
+        P[row*width + col] = Pvalue;
+    }
+}
+void run_kernel(float* A, float* B, float* C, int width)
+{
+    float *A_d, *B_d, *C_d;
+    int size_bytes = width*width*sizeof(float);
+    cudaMalloc((void **) &A_d, size_bytes);
+    cudaMalloc((void **) &B_d, size_bytes);
+    cudaMalloc((void **) &C_d, size_bytes);
+
+    cudaMemcpy(A_d, A, size_bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(B_d, B, size_bytes, cudaMemcpyHostToDevice);
+
+
+    dim3 dimGrid(ceil(width/32.0),ceil(width/32.0),1);
+    dim3 dimBlock(32,32,1);
+
+    matrix_mul_GPU<<<dimGrid, dimBlock>>>(A_d, B_d, C_d, width);
+    cudaDeviceSynchronize();    // Im adding this but I belive the dependencies 
+                                // will already lock the main thread
+    cudaMemcpy(C, C_d, size_bytes, cudaMemcpyDeviceToHost);
+    cudaFree(A_d);
+    cudaFree(B_d);
+    cudaFree(C_d);
+
+}
 
 
 
@@ -82,13 +122,14 @@ int main()
 {
     BeginProfile();
 
-    int size = 100;
+    int size = 1000;
     int n = size, m = size, i = size, j = size;
 
     float *A = (float *)malloc(n * m * sizeof(float));
     float *B = (float *)malloc(i * j * sizeof(float));
     float *C = (float *)malloc(n * j * sizeof(float));
     float *C_out = (float *)malloc(n * j * sizeof(float));
+    float *C_out_cuda = (float *)malloc(n * j * sizeof(float));
 
     read_matrix("matrix_A.txt", n, m, A);
     read_matrix("matrix_B.txt", i, j, B);
@@ -96,15 +137,24 @@ int main()
     printf("First item A: %.8f\n", A[0]);
     printf("First item B: %.8f\n", B[0]);
     printf("First item C: %.8f\n", C[0]);
+
     {
         TimeBlock("CPU")
         matrix_mul_CPU(A,B,C_out,size);
     }
+    {
+        TimeBlock("GPU")
+        run_kernel(A, B, C_out_cuda, n);
+
+    }
 
     printf("First item C_out: %.8f\n", C_out[0]);
     printf("Difference between first items: %.8f\n", fabs(C[0] - C_out[0]));
-    matrices_are_almost_equal(C,C_out,size,size,0.001);
+    matrices_are_almost_equal(C,C_out,size,size,0.1);
+    matrices_are_almost_equal(C,C_out_cuda,size,size,0.1);
+    matrices_are_almost_equal(C_out,C_out_cuda,size,size,0.01);
     save_matrix("C_CPU.txt", C_out, size, size);
+    save_matrix("C_GPU.txt", C_out_cuda, size, size);
 
 
     EndAndPrintProfile();
@@ -114,22 +164,4 @@ int main()
     free(C);
     free(C_out);
     return 0;
-}
-
-__global__
-void matrix_mul_GPU(float* M, float* N, float* P, int width)
-{
-    int col = blockIdx.x*blockDim.x + threadIdx.x;
-    int row = blockIdx.y*blockDim.y + threadIdx.y;
-
-    if (col < width && row < width)
-    {
-        float Pvalue = 0;
-        for (int k = 0; k < width; ++k) 
-        {
-            Pvalue += M[row*width + k]*N[k*width+col];
-        }
-
-        P[row*width + col] = Pvalue;
-    }
 }
