@@ -27,6 +27,7 @@ int main()
         printf("Warp size: %i\n", devProp.warpSize);
         printf("Compute mode: %i\n", devProp.computeMode);
         printf("max blocks per SM: %i\n", devProp.maxBlocksPerMultiProcessor);
+        printf("Shared Memory per block: %lu\n", devProp.sharedMemPerBlock);
     }
     return 0;
 }

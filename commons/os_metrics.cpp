@@ -37,7 +37,7 @@ static u64 ReadOSTimer(void)
 #else
 
 #include <x86intrin.h>
-#include <sys/time.h>
+#include <time.h>
 
 static u64 GetOSTimerFreq(void)
 {
@@ -46,12 +46,10 @@ static u64 GetOSTimerFreq(void)
 
 static u64 ReadOSTimer(void)
 {
-    // NOTE(casey): The "struct" keyword is not necessary here when compiling in C++,
-    // but just in case anyone is using this file from C, I include it.
-    struct timeval Value;
-    gettimeofday(&Value, 0);
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);  
     
-    u64 Result = GetOSTimerFreq()*(u64)Value.tv_sec + (u64)Value.tv_usec;
+    u64 Result = GetOSTimerFreq() * (u64)ts.tv_sec + (u64)ts.tv_nsec / 1000; 
     return Result;
 }
 
